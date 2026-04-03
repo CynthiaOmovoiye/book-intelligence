@@ -159,10 +159,7 @@ export NO_PROXY=127.0.0.1,localhost
 uv run python gradio_app.py
 ```
 
-**In-app errors**
 
-- If OpenRouter fails, the GPT panel shows an error; metadata and Llama may still work.
-- If Ollama is not running, the Llama panel shows an error; metadata and GPT may still work.
 
 ### Notebook (Jupyter / VS Code)
 
@@ -178,34 +175,7 @@ Colab does not include this repo by default. Either **clone the repository** or 
 
 ---
 
-## Troubleshooting
 
-**`TypeError: unhashable type: 'dict'` when loading the Gradio UI**
-
-This comes from a bad combination of **Starlette 1.x**, **Jinja2 3.1+**, and **Gradio 4.x**. Reinstall from this repo’s `requirements.txt` so you get **Starlette below 1.0** and **Jinja2 3.0.x** (pins are documented there).
-
-**`ValueError: When localhost is not accessible…` on launch**
-
-Try `export NO_PROXY=127.0.0.1,localhost` and run again. If it still fails, use a one-off public link: `GRADIO_SHARE=1 uv run python gradio_app.py`.
-
-**`uv pip install` says no virtual environment**
-
-Run `uv venv` in the project root first, then `uv pip install -r requirements.txt`.
-
-**LangChain / `langchain-huggingface` vs this project’s `huggingface_hub` pin**
-
-This project pins an older `huggingface_hub` for Gradio 4.x compatibility. Use a **dedicated `.venv`** for Book Intelligence so your global or other projects can keep `huggingface_hub>=0.33` if needed.
-
-**Hugging Face Spaces — `audioop` / `pyaudioop` / `ModuleNotFoundError` on import**
-
-Python **3.13** removed the stdlib **`audioop`** module. **Gradio** depends on **pydub**, which still expects it, so the Space can crash at startup.
-
-- **Recommended:** In the Space README YAML header, set **`python_version: "3.12"`** (this repo’s README already does). The 3.12 stdlib still includes `audioop`.
-- **If you must use 3.13:** keep **`audioop-lts`** in `requirements.txt` (installed only when `python_version >= "3.13"`).
-
-Add **`OPENAI_API_KEY`** under Space **Settings → Repository secrets** so OpenRouter works. **Ollama** is not available inside Hugging Face’s cloud runtime; the Llama panel will error unless you point summarization at a remote API you control.
-
----
 
 ## Example (Python)
 
