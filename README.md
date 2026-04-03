@@ -2,6 +2,8 @@
 
 Look up any book and get a structured AI-powered summary — using **two model backends simultaneously**: a cloud LLM (GPT-4o-mini via OpenRouter) and a local LLM (Llama 3.2 via Ollama).
 
+You can run the same flow in a **Gradio web UI** or in the **Jupyter notebook**.
+
 ---
 
 ## What it does
@@ -26,6 +28,18 @@ Who it's for: <one line>
 
 ---
 
+## Project layout
+
+| File | Role |
+|------|------|
+| `gradio_app.py` | Web UI: lookup + dual summaries (recommended for local demos) |
+| `book_intelligence.ipynb` | Interactive notebook with optional live streaming in Jupyter |
+| `book_lookup.py` | `lookup_book_google()` — Google Books API |
+| `book_summarize.py` | Clients, prompts, `summarize_book()`, LLM helpers (shared by UI + notebook) |
+| `requirements.txt` | Python dependencies |
+
+---
+
 ## Why two backends?
 
 Running the same task through a cloud model (GPT-4o-mini) and a local model (Llama 3.2 via Ollama) side by side shows how output quality, tone, and structure vary across providers — useful for:
@@ -38,40 +52,77 @@ Running the same task through a cloud model (GPT-4o-mini) and a local model (Lla
 
 ## Features
 
+- **Gradio UI** — enter title and author; see raw Google Books metadata plus GPT and Llama summaries side by side
 - **Google Books API integration** — no scraping, clean structured metadata
-- **Dual model support** — cloud (GPT-4o-mini) and local (Llama 3.2 via Ollama) in the same notebook
-- **Streaming output** — both models support real-time token streaming to notebook
-- **Strict prompt engineering** — system prompt constrains the model to use only the provided description, preventing hallucination about book contents
-- **Clean function design** — `lookup_book_google()`, `build_user_prompt()`, `summarize_book()` are independently testable and reusable
+- **Dual model support** — cloud (GPT-4o-mini) and local (Llama 3.2 via Ollama)
+- **Streaming output (notebook)** — both models support real-time token streaming in Jupyter
+- **Strict prompt engineering** — system prompt constrains the model to use only the provided description, reducing hallucination about book contents
+- **Shared library code** — `book_lookup.py` and `book_summarize.py` keep the notebook and Gradio app in sync
 
 ---
 
 ## Quick Start
 
-### Cloud model (GPT-4o-mini via OpenRouter)
+### 1. Install dependencies
 
-1. Get a free API key at [openrouter.ai](https://openrouter.ai)
-2. Open `book_intelligence.ipynb` in Google Colab
-3. Add your key as a Colab secret named `OPENAI_API_KEY`
-4. Run all cells
-
-### Local model (Llama 3.2 via Ollama)
+From the project root:
 
 ```bash
-# Install Ollama: https://ollama.ai
+pip install -r requirements.txt
+```
+
+### 2. Configure the cloud API (OpenRouter)
+
+1. Get an API key at [openrouter.ai](https://openrouter.ai)
+2. Create a `.env` file in the project root:
+
+```bash
+OPENAI_API_KEY=your_key_here
+```
+
+The app uses the OpenAI-compatible client pointed at `https://openrouter.ai/api/v1` (see `book_summarize.py`).
+
+### 3. Run the local LLM (optional but recommended for full comparison)
+
+```bash
+# https://ollama.ai
 ollama pull llama3.2
 ollama serve
+```
 
-# Then run the notebook locally in Jupyter
-pip install openai requests python-dotenv
+Leave this running in a separate terminal while you use the app.
+
+### 4. Run the Gradio app (main way to run locally)
+
+```bash
+python3 gradio_app.py
+```
+
+Gradio prints a local URL (usually `http://127.0.0.1:7860`). Open it in your browser, enter **book title** and **author**, then click **Look up & summarize**.
+
+- If OpenRouter fails, the GPT panel shows an error; metadata and Llama may still work.
+- If Ollama is not running, the Llama panel shows an error; metadata and GPT may still work.
+
+### Notebook (Jupyter / VS Code)
+
+```bash
 jupyter notebook book_intelligence.ipynb
 ```
 
+Run cells from top to bottom. The notebook imports `book_lookup` and `book_summarize`, so keep those files in the same directory as the notebook.
+
+### Google Colab
+
+Colab does not include this repo by default. Either **clone the repository** or **upload** `book_intelligence.ipynb`, `book_lookup.py`, and `book_summarize.py` into the same Colab session. Add `OPENAI_API_KEY` as a Colab secret or in a `.env` workflow you prefer.
+
 ---
 
-## Example
+## Example (Python)
 
 ```python
+from book_lookup import lookup_book_google
+from book_summarize import llm_with_gpt, summarize_book
+
 meta = lookup_book_google("Atomic Habits", "James Clear")
 summary = summarize_book(meta, llm_with_gpt)
 ```
@@ -109,14 +160,16 @@ Ollama exposes a local OpenAI-compatible endpoint (`http://localhost:11434/v1`),
 
 ## Requirements
 
-```
-openai>=1.0.0
-requests
-python-dotenv
-ipython
+Install everything with:
+
+```bash
+pip install -r requirements.txt
 ```
 
-For local model:
+That includes `openai`, `requests`, `python-dotenv`, `ipython`, and `gradio`.
+
+For the local model:
+
 ```bash
 ollama pull llama3.2
 ```
