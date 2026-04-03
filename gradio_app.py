@@ -1,6 +1,7 @@
 """Gradio UI: Google Books lookup + dual LLM summaries (same flow as book_intelligence.ipynb)."""
 
 import json
+import os
 
 import gradio as gr
 import requests
@@ -85,7 +86,15 @@ def main() -> None:
             outputs=outs,
         )
 
-    demo.launch()
+    # VPN/proxy can make Gradio's localhost probe fail; 127.0.0.1 + NO_PROXY often fixes it.
+    # If it still fails, run with: GRADIO_SHARE=1 uv run python gradio_app.py (temporary public URL).
+    share = os.environ.get("GRADIO_SHARE", "").lower() in ("1", "true", "yes")
+    demo.launch(
+        server_name="127.0.0.1",
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
+        inbrowser=False,
+        share=share,
+    )
 
 
 if __name__ == "__main__":

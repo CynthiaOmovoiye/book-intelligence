@@ -1,3 +1,10 @@
+---
+title: book-intelligence
+app_file: gradio_app.py
+sdk: gradio
+sdk_version: 4.44.1
+python_version: "3.12"
+---
 # 📚 Book Intelligence Tool
 
 Look up any book and get a structured AI-powered summary — using **two model backends simultaneously**: a cloud LLM (GPT-4o-mini via OpenRouter) and a local LLM (Llama 3.2 via Ollama).
@@ -36,7 +43,7 @@ Who it's for: <one line>
 | `book_intelligence.ipynb` | Interactive notebook with optional live streaming in Jupyter |
 | `book_lookup.py` | `lookup_book_google()` — Google Books API |
 | `book_summarize.py` | Clients, prompts, `summarize_book()`, LLM helpers (shared by UI + notebook) |
-| `requirements.txt` | Python dependencies |
+| `requirements.txt` | Python dependencies (includes version pins for Gradio compatibility) |
 
 ---
 
@@ -65,11 +72,40 @@ Running the same task through a cloud model (GPT-4o-mini) and a local model (Lla
 
 ### 1. Install dependencies
 
-From the project root:
+**Use a virtual environment** for this project so Gradio’s pinned `huggingface_hub` does not clash with other tools (for example **langchain-huggingface**, which needs a newer `huggingface_hub`).
+
+**Option A — `uv`**
 
 ```bash
-pip install -r requirements.txt
+cd /path/to/book-intelligence
+uv venv
+uv pip install -r requirements.txt
 ```
+
+`uv pip install` only works after `uv venv` (or with an activated venv). Without a venv, uv will suggest `--system`; avoid `--system` if you already use LangChain or other HF tooling globally.
+
+Run the app with:
+
+```bash
+uv run python gradio_app.py
+```
+
+**Option B — standard venv**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python gradio_app.py
+```
+
+If you already ran `python3 -m pip install "huggingface_hub<0.23"` into your **user** site-packages and rely on **langchain-huggingface** elsewhere, restore the newer hub for your user install:
+
+```bash
+python3 -m pip install "huggingface_hub>=0.33.4"
+```
+
+Then keep Book Intelligence dependencies only inside `.venv` as above.
 
 ### 2. Configure the cloud API (OpenRouter)
 
@@ -94,11 +130,36 @@ Leave this running in a separate terminal while you use the app.
 
 ### 4. Run the Gradio app (main way to run locally)
 
+From the project directory, with dependencies installed in your venv:
+
 ```bash
-python3 gradio_app.py
+uv run python gradio_app.py
 ```
 
-Gradio prints a local URL (usually `http://127.0.0.1:7860`). Open it in your browser, enter **book title** and **author**, then click **Look up & summarize**.
+If you use a classic venv and have activated it:
+
+```bash
+python gradio_app.py
+```
+
+Gradio binds to **127.0.0.1** on port **7860** by default (see `gradio_app.py`). Open the printed URL in your browser, enter **book title** and **author**, then click **Look up & summarize**.
+
+**Runtime environment variables (optional)**
+
+| Variable | Purpose |
+|----------|---------|
+| `GRADIO_SERVER_PORT` | Port (default `7860`). |
+| `GRADIO_SHARE` | Set to `1`, `true`, or `yes` to create a temporary public Gradio link if localhost checks fail (VPN/proxy). |
+| `NO_PROXY` | e.g. `127.0.0.1,localhost` — often fixes “localhost not accessible” when a system proxy intercepts local traffic. |
+
+Example:
+
+```bash
+export NO_PROXY=127.0.0.1,localhost
+uv run python gradio_app.py
+```
+
+**In-app errors**
 
 - If OpenRouter fails, the GPT panel shows an error; metadata and Llama may still work.
 - If Ollama is not running, the Llama panel shows an error; metadata and GPT may still work.
@@ -114,6 +175,35 @@ Run cells from top to bottom. The notebook imports `book_lookup` and `book_summa
 ### Google Colab
 
 Colab does not include this repo by default. Either **clone the repository** or **upload** `book_intelligence.ipynb`, `book_lookup.py`, and `book_summarize.py` into the same Colab session. Add `OPENAI_API_KEY` as a Colab secret or in a `.env` workflow you prefer.
+
+---
+
+## Troubleshooting
+
+**`TypeError: unhashable type: 'dict'` when loading the Gradio UI**
+
+This comes from a bad combination of **Starlette 1.x**, **Jinja2 3.1+**, and **Gradio 4.x**. Reinstall from this repo’s `requirements.txt` so you get **Starlette below 1.0** and **Jinja2 3.0.x** (pins are documented there).
+
+**`ValueError: When localhost is not accessible…` on launch**
+
+Try `export NO_PROXY=127.0.0.1,localhost` and run again. If it still fails, use a one-off public link: `GRADIO_SHARE=1 uv run python gradio_app.py`.
+
+**`uv pip install` says no virtual environment**
+
+Run `uv venv` in the project root first, then `uv pip install -r requirements.txt`.
+
+**LangChain / `langchain-huggingface` vs this project’s `huggingface_hub` pin**
+
+This project pins an older `huggingface_hub` for Gradio 4.x compatibility. Use a **dedicated `.venv`** for Book Intelligence so your global or other projects can keep `huggingface_hub>=0.33` if needed.
+
+**Hugging Face Spaces — `audioop` / `pyaudioop` / `ModuleNotFoundError` on import**
+
+Python **3.13** removed the stdlib **`audioop`** module. **Gradio** depends on **pydub**, which still expects it, so the Space can crash at startup.
+
+- **Recommended:** In the Space README YAML header, set **`python_version: "3.12"`** (this repo’s README already does). The 3.12 stdlib still includes `audioop`.
+- **If you must use 3.13:** keep **`audioop-lts`** in `requirements.txt` (installed only when `python_version >= "3.13"`).
+
+Add **`OPENAI_API_KEY`** under Space **Settings → Repository secrets** so OpenRouter works. **Ollama** is not available inside Hugging Face’s cloud runtime; the Llama panel will error unless you point summarization at a remote API you control.
 
 ---
 
@@ -160,13 +250,18 @@ Ollama exposes a local OpenAI-compatible endpoint (`http://localhost:11434/v1`),
 
 ## Requirements
 
-Install everything with:
+Install everything inside your virtual environment:
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
-That includes `openai`, `requests`, `python-dotenv`, `ipython`, and `gradio`.
+(or `pip install -r requirements.txt` after `python3 -m venv .venv` and `source .venv/bin/activate`.)
+
+Core packages: `openai`, `requests`, `python-dotenv`, `ipython`, `gradio` (4.44+), plus intentional pins:
+
+- **`starlette<1`**, **`jinja2<3.1`** — avoid Gradio template / Jinja cache errors with Starlette 1.x.
+- **`huggingface_hub<0.23`** — Gradio 4.x still expects APIs removed in newer `huggingface_hub` on some setups.
 
 For the local model:
 

@@ -1,5 +1,12 @@
 openai>=1.0.0
 requests
 python-dotenv
+# Python 3.13 removed stdlib audioop; Gradio/pydub need this on 3.13+ (e.g. Hugging Face Spaces)
+audioop-lts>=0.2.0; python_version >= "3.13"
 ipython
-gradio>=4.0.0
+gradio>=4.44.0,<5
+# Gradio 4.x + Starlette 1.x + Jinja2 3.1 can raise TemplateResponse "unhashable type: 'dict'"; keep Starlette 0.x + Jinja2 3.0.x
+starlette>=0.40.0,<1.0.0
+jinja2>=3.0.3,<3.1.0
+# Older Gradio 4.x: HfFolder removed in huggingface_hub 0.23+ (safe to relax if you only use Python 3.10+ and a recent Gradio patch)
+huggingface_hub>=0.19.0,<0.23.0
